@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: codigos-sakurastore
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: npm ci && npm run db:generate && npm run build
+    startCommand: npm run prisma:deploy -w backend && npm run db:seed && npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: CODE_RETENTION_DAYS
+        value: "30"
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: codigos-sakurastore
+          envVarKey: RENDER_EXTERNAL_URL

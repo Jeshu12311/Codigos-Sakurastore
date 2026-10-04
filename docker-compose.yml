@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:?POSTGRES_DB es obligatoria}"
+      POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER es obligatorio}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD es obligatoria}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      target: backend-runtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:8080}"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET es obligatorio}"
+      JWT_EXPIRES_IN: "${JWT_EXPIRES_IN:-8h}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      TRUST_PROXY: "${TRUST_PROXY:-true}"
+      CODE_RETENTION_DAYS: "${CODE_RETENTION_DAYS:-30}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:?ADMIN_EMAIL es obligatorio}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?ADMIN_PASSWORD es obligatoria}"
+    expose:
+      - "4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      target: frontend-runtime
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

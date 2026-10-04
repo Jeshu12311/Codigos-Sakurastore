@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model UserAdmin {
+  id            String          @id @default(cuid())
+  email         String          @unique
+  passwordHash  String
+  createdAt     DateTime        @default(now())
+  temporaryCodes TemporaryCode[]
+}
+
+model Account {
+  id             String          @id @default(cuid())
+  alias          String          @unique
+  service        String
+  status         AccountStatus   @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  sales          Sale[]
+  temporaryCodes TemporaryCode[]
+  auditLogs      AuditLog[]
+
+  @@index([status])
+}
+
+model Sale {
+  id                String     @id @default(cuid())
+  saleCode          String     @unique
+  accountId         String
+  customerReference String?
+  active            Boolean    @default(true)
+  createdAt         DateTime   @default(now())
+  expiresAt         DateTime
+  account           Account    @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  auditLogs          AuditLog[]
+
+  @@index([accountId, active])
+  @@index([expiresAt])
+}
+
+model TemporaryCode {
+  id            String    @id @default(cuid())
+  accountId     String
+  code          String
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime
+  used          Boolean   @default(false)
+  invalidatedAt DateTime?
+  createdBy     String
+  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  creator       UserAdmin @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([accountId, expiresAt])
+  @@index([expiresAt, used])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  ip        String
+  accountId String?
+  saleId    String?
+  createdAt DateTime @default(now())
+  metadata  Json?
+  account   Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  sale      Sale?    @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([accountId, createdAt])
+  @@index([saleId, createdAt])
+}
+
