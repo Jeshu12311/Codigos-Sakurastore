@@ -14,6 +14,7 @@ import authRouter from './routes/auth.js';
 import codesRouter from './routes/codes.js';
 import dashboardRouter from './routes/dashboard.js';
 import logsRouter from './routes/logs.js';
+import { mailAdminRouter, mailCallbackRouter } from './routes/mail.js';
 import { createPublicRouter } from './routes/public.js';
 import salesRouter from './routes/sales.js';
 
@@ -58,11 +59,13 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/public', publicLimiter, createPublicRouter(options.attemptMaxFailures));
   app.use('/api/admin/auth/login', loginLimiter);
   app.use('/api/admin/auth', authRouter);
+  app.use('/api/admin/mail/oauth', mailCallbackRouter);
   app.use('/api/admin/dashboard', requireAdmin, dashboardRouter);
   app.use('/api/admin/accounts', requireAdmin, accountsRouter);
   app.use('/api/admin/sales', requireAdmin, salesRouter);
   app.use('/api/admin/codes', requireAdmin, codesRouter);
   app.use('/api/admin/logs', requireAdmin, logsRouter);
+  app.use('/api/admin/mail', requireAdmin, mailAdminRouter);
 
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const frontendDist = path.resolve(currentDir, '../../frontend/dist');

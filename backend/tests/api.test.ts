@@ -286,4 +286,75 @@ describe.sequential('API backend', () => {
     });
     expect(prismaMock.sale.findFirst).not.toHaveBeenCalled();
   });
+
+  it('no consulta el buzón cuando la venta es inválida', async () => {
+    mockPublicSale(null);
+
+    const response = await request(createApp())
+      .post('/api/public/code')
+      .send({ email: account.email, saleCode: 'NOPE-0000' });
+
+    expect(response.status).toBe(404);
+    expect(prismaMock.mailboxConnection.findUnique).not.toHaveBeenCalled();
+    expect(prismaMock.codeRequest.findFirst).not.toHaveBeenCalled();
+    expect(prismaMock.temporaryCode.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('no entrega un código de correo ligado a otra venta', async () => {
+    const sale = validSale();
+    const codeFromAnotherSale = validCode({
+      id: 'email-code-other-sale',
+      source: 'EMAIL',
+      saleId: 'sale-2',
+      createdBy: null,
+    });
+    mockPublicSale(sale);
+    prismaMock.temporaryCode.findFirst.mockImplementation(async (query: {
+      where?: { OR?: Array<{ source?: string; saleId?: string }> };
+    }) => {
+      const allowed = query.where?.OR ?? [];
+      const matches = allowed.some((condition) => (
+        condition.source === codeFromAnotherSale.source
+        || condition.saleId === codeFromAnotherSale.saleId
+      ));
+      return matches ? codeFromAnotherSale : null;
+    });
+    prismaMock.mailboxConnection.findUnique.mockResolvedValue(null);
+
+    const response = await request(createApp())
+      .post('/api/public/code')
+      .send({ email: account.email, saleCode: sale.saleCode });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ success: false, status: 'waiting' });
+    expect(response.body).not.toHaveProperty('code');
+    expect(prismaMock.temporaryCode.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        OR: expect.arrayContaining([{ source: 'MANUAL' }, { saleId: sale.id }]),
+      }),
+    }));
+  });
+
+  it('protege los endpoints administrativos de correo con autenticación y CSRF', async () => {
+    const unauthenticated = await request(createApp())
+      .get(`/api/admin/mail/accounts/${account.id}/status`);
+
+    expect(unauthenticated.status).toBe(401);
+
+    const { agent } = await authenticatedAgent();
+    const connect = await agent
+      .post(`/api/admin/mail/accounts/${account.id}/connect/google`)
+      .send({ senderAllowlist: ['no-reply@example.com'] });
+    const sync = await agent
+      .post(`/api/admin/mail/accounts/${account.id}/sync`)
+      .send({});
+    const disconnect = await agent
+      .delete(`/api/admin/mail/accounts/${account.id}/connection`);
+
+    expect(connect.status).toBe(403);
+    expect(sync.status).toBe(403);
+    expect(disconnect.status).toBe(403);
+    expect(prismaMock.oAuthAttempt.create).not.toHaveBeenCalled();
+    expect(prismaMock.mailboxConnection.findUnique).not.toHaveBeenCalled();
+  });
 });

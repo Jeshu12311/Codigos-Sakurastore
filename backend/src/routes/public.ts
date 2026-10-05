@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { createAttemptGuard } from '../middleware/attempt-guard.js';
 import { validateBody } from '../middleware/validate.js';
 import { ManualCodeProvider } from '../providers/manual-code-provider.js';
+import { syncMailboxForAccount } from '../mail/sync.js';
 import { normalizedEmailSchema } from '../schemas/email.js';
 import { writeAudit } from '../services/audit.js';
 import { asyncHandler } from '../utils/async-handler.js';
@@ -14,6 +16,32 @@ const querySchema = z.object({
 }).strict();
 
 const GENERIC_NOT_FOUND = 'No se encontró una solicitud activa con esos datos.';
+
+async function ensureSaleRequest(sale: { id: string; accountId: string; expiresAt: Date }) {
+  const now = new Date();
+  await prisma.codeRequest.updateMany({
+    where: { accountId: sale.accountId, status: 'WAITING', expiresAt: { lte: now } },
+    data: { status: 'EXPIRED' },
+  });
+  const existing = await prisma.codeRequest.findFirst({
+    where: { accountId: sale.accountId, status: 'WAITING', expiresAt: { gt: now } },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (existing) return existing;
+
+  const expiresAt = new Date(Math.min(sale.expiresAt.getTime(), now.getTime() + 3 * 60_000));
+  try {
+    return await prisma.codeRequest.create({
+      data: { saleId: sale.id, accountId: sale.accountId, expiresAt },
+    });
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+    return prisma.codeRequest.findFirst({
+      where: { accountId: sale.accountId, status: 'WAITING', expiresAt: { gt: now } },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+}
 
 export function createPublicRouter(maxFailures = 8): Router {
   const router = Router();
@@ -41,7 +69,20 @@ export function createPublicRouter(maxFailures = 8): Router {
     }
 
     guard.clear(ip, saleCode);
-    const temporaryCode = await provider.getLatestCode(sale.accountId);
+    let temporaryCode = await provider.getLatestCode(sale.accountId, sale.id);
+    if (!temporaryCode) {
+      const connection = await prisma.mailboxConnection.findUnique({
+        where: { accountId: sale.accountId },
+        select: { status: true },
+      });
+      if (connection?.status === 'ACTIVE') {
+        const codeRequest = await ensureSaleRequest(sale);
+        if (codeRequest?.saleId === sale.id) {
+          await syncMailboxForAccount(sale.accountId).catch(() => undefined);
+          temporaryCode = await provider.getLatestCode(sale.accountId, sale.id);
+        }
+      }
+    }
     if (!temporaryCode || temporaryCode.expiresAt.getTime() <= now.getTime() || temporaryCode.used || temporaryCode.invalidatedAt) {
       await writeAudit({ action: 'PUBLIC_CODE_WAITING', ip, accountId: sale.accountId, saleId: sale.id });
       return res.json({ success: false, status: 'waiting', message: 'Todavía no hay un código disponible.' });

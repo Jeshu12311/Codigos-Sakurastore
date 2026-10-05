@@ -12,56 +12,152 @@ enum AccountStatus {
   INACTIVE
 }
 
+enum MailProvider {
+  GOOGLE
+  MICROSOFT
+}
+
+enum MailConnectionStatus {
+  ACTIVE
+  REAUTH_REQUIRED
+  REVOKED
+  ERROR
+}
+
+enum CodeSource {
+  MANUAL
+  EMAIL
+}
+
+enum CodeRequestStatus {
+  WAITING
+  FULFILLED
+  EXPIRED
+  CANCELLED
+}
+
 model UserAdmin {
-  id            String          @id @default(cuid())
-  email         String          @unique
-  passwordHash  String
-  createdAt     DateTime        @default(now())
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  createdAt      DateTime        @default(now())
   temporaryCodes TemporaryCode[]
+  oauthAttempts  OAuthAttempt[]
 }
 
 model Account {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  service        String
-  status         AccountStatus   @default(ACTIVE)
-  createdAt      DateTime        @default(now())
-  sales          Sale[]
-  temporaryCodes TemporaryCode[]
-  auditLogs      AuditLog[]
+  id                String             @id @default(cuid())
+  email             String             @unique
+  service           String
+  status            AccountStatus      @default(ACTIVE)
+  createdAt         DateTime           @default(now())
+  sales             Sale[]
+  temporaryCodes    TemporaryCode[]
+  codeRequests      CodeRequest[]
+  auditLogs         AuditLog[]
+  mailboxConnection MailboxConnection?
+  oauthAttempts     OAuthAttempt[]
 
   @@index([status])
 }
 
 model Sale {
-  id                String     @id @default(cuid())
-  saleCode          String     @unique
+  id                String          @id @default(cuid())
+  saleCode          String          @unique
   accountId         String
   customerReference String?
-  active            Boolean    @default(true)
-  createdAt         DateTime   @default(now())
+  active            Boolean         @default(true)
+  createdAt         DateTime        @default(now())
   expiresAt         DateTime
-  account           Account    @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  auditLogs          AuditLog[]
+  account           Account         @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  auditLogs         AuditLog[]
+  temporaryCodes    TemporaryCode[]
+  codeRequests      CodeRequest[]
 
   @@index([accountId, active])
   @@index([expiresAt])
 }
 
 model TemporaryCode {
-  id            String    @id @default(cuid())
-  accountId     String
-  code          String
-  createdAt     DateTime  @default(now())
-  expiresAt     DateTime
-  used          Boolean   @default(false)
-  invalidatedAt DateTime?
-  createdBy     String
-  account       Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  creator       UserAdmin @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  id                String     @id @default(cuid())
+  accountId         String
+  code              String
+  createdAt         DateTime   @default(now())
+  expiresAt         DateTime
+  used              Boolean    @default(false)
+  invalidatedAt     DateTime?
+  createdBy         String?
+  source            CodeSource @default(MANUAL)
+  saleId            String?
+  externalMessageId String?
+  account           Account    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  creator           UserAdmin? @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  sale              Sale?      @relation(fields: [saleId], references: [id], onDelete: SetNull)
 
+  @@unique([accountId, externalMessageId])
   @@index([accountId, expiresAt])
   @@index([expiresAt, used])
+  @@index([saleId])
+}
+
+// A request binds the email ingestion flow to the sale that is allowed to
+// receive the code. The partial unique index for WAITING requests is defined
+// in the SQL migration because Prisma does not model partial indexes.
+model CodeRequest {
+  id          String            @id @default(cuid())
+  saleId      String
+  accountId   String
+  status      CodeRequestStatus @default(WAITING)
+  expiresAt   DateTime
+  createdAt   DateTime          @default(now())
+  fulfilledAt DateTime?
+  sale        Sale              @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  account     Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([expiresAt])
+  @@index([accountId, status])
+}
+
+model OAuthAttempt {
+  id                   String       @id @default(cuid())
+  stateHash            String       @unique
+  provider             MailProvider
+  accountId            String
+  adminId              String
+  pkceVerifierEnvelope String
+  senderAllowlist      String[]
+  expiresAt            DateTime
+  consumedAt           DateTime?
+  createdAt            DateTime     @default(now())
+  account              Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  admin                UserAdmin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, expiresAt])
+  @@index([adminId, expiresAt])
+  @@index([expiresAt])
+}
+
+model MailboxConnection {
+  id                 String               @id @default(cuid())
+  accountId          String               @unique
+  provider           MailProvider
+  providerSubject    String
+  externalEmail      String
+  credentialEnvelope String
+  scopes             String[]
+  status             MailConnectionStatus @default(ACTIVE)
+  senderAllowlist    String[]
+  lastSyncAt         DateTime?
+  syncLockUntil      DateTime?
+  lastErrorCode      String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  account            Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerSubject])
+  @@index([status])
+  @@index([syncLockUntil])
 }
 
 model AuditLog {

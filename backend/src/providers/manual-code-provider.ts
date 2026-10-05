@@ -4,9 +4,15 @@ import type { CodeProvider, SaveCodeInput } from './code-provider.js';
 export class ManualCodeProvider implements CodeProvider {
   constructor(private readonly db: PrismaClient) {}
 
-  getLatestCode(accountId: string): Promise<TemporaryCode | null> {
+  getLatestCode(accountId: string, saleId?: string): Promise<TemporaryCode | null> {
     return this.db.temporaryCode.findFirst({
-      where: { accountId, used: false, invalidatedAt: null, expiresAt: { gt: new Date() } },
+      where: {
+        accountId,
+        used: false,
+        invalidatedAt: null,
+        expiresAt: { gt: new Date() },
+        ...(saleId ? { OR: [{ source: 'MANUAL' }, { saleId }] } : { source: 'MANUAL' }),
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -19,4 +25,3 @@ export class ManualCodeProvider implements CodeProvider {
     return this.db.temporaryCode.create({ data: input });
   }
 }
-

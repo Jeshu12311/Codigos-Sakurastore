@@ -30,3 +30,15 @@ services:
           type: web
           name: codigos-sakurastore
           envVarKey: RENDER_EXTERNAL_URL
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      - key: MAIL_TOKEN_KEY_B64
+        sync: false
+      - key: EMAIL_CODE_TTL_MINUTES
+        value: "10"

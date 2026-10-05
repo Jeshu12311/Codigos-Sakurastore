@@ -38,6 +38,38 @@ const prismaMock = vi.hoisted(() => {
       deleteMany: vi.fn(),
       count: vi.fn(),
     },
+    codeRequest: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn(),
+    },
+    mailboxConnection: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn(),
+    },
+    oAuthAttempt: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn(),
+    },
     auditLog: {
       findMany: vi.fn(),
       create: vi.fn(),
@@ -64,6 +96,20 @@ export function getPrismaMock() {
 vi.mock('../src/lib/prisma.js', () => ({ prisma: prismaMock }));
 vi.mock('@prisma/client', () => ({
   AccountStatus: { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' },
+  MailProvider: { GOOGLE: 'GOOGLE', MICROSOFT: 'MICROSOFT' },
+  MailConnectionStatus: {
+    ACTIVE: 'ACTIVE',
+    REAUTH_REQUIRED: 'REAUTH_REQUIRED',
+    REVOKED: 'REVOKED',
+    ERROR: 'ERROR',
+  },
+  CodeSource: { MANUAL: 'MANUAL', EMAIL: 'EMAIL' },
+  CodeRequestStatus: {
+    WAITING: 'WAITING',
+    FULFILLED: 'FULFILLED',
+    EXPIRED: 'EXPIRED',
+    CANCELLED: 'CANCELLED',
+  },
   Prisma: {
     PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {
       code: string;

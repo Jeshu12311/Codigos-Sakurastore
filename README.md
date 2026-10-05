@@ -15,16 +15,16 @@ Portal web para administrar ventas y entregar códigos temporales de acceso de f
 - Autenticación administrativa con JWT en cookie `HttpOnly` y protección CSRF.
 - Validación estricta, Helmet, límites de solicitudes y bloqueo temporal de intentos.
 - Limpieza diaria de códigos antiguos según `CODE_RETENTION_DAYS`.
-- Arquitectura de proveedores preparada para integraciones autorizadas; la implementación inicial es manual.
+- Recepción automática desde Gmail y desde Outlook/Hotmail mediante OAuth y sus API oficiales.
+- Lista permitida de remitentes por buzón, cifrado de los tokens OAuth y registro manual como alternativa.
 
 ## Flujo operativo
 
 1. El administrador registra el correo real de la cuenta del servicio, por ejemplo `cuenta.streaming@example.com`.
 2. Crea una venta asociada a ese correo y entrega al comprador el código de venta generado.
-3. Cuando el servicio envía un código temporal al buzón autorizado, el administrador lo registra para esa cuenta.
-4. El comprador consulta con el correo de la cuenta y su código de venta; el portal entrega únicamente el código temporal activo más reciente.
-
-La recepción automática desde Gmail, Outlook u otro buzón requiere conectar su API oficial mediante OAuth. Hasta configurar esa integración, los códigos se registran manualmente desde el panel.
+3. Desde el panel, conecta mediante OAuth el buzón Gmail, Outlook o Hotmail que corresponde exactamente a ese correo y define los remitentes permitidos.
+4. Cuando el comprador consulta con el correo y el código de venta, la aplicación busca mensajes recientes mediante la API oficial y asocia el código recibido a esa venta.
+5. Si el buzón no está conectado o no hay un código automático, el administrador puede seguir registrándolo manualmente.
 
 ## Tecnologías y estructura
 
@@ -69,6 +69,12 @@ Para ejecución en contenedores solo se necesita Docker Engine con Docker Compos
 | `COOKIE_SECURE` | Envía cookies solo por HTTPS | `false` solo en HTTP local |
 | `TRUST_PROXY` | Confía en el proxy para IP y protocolo | `false` localmente |
 | `CODE_RETENTION_DAYS` | Días que se conservan códigos expirados antes de borrarlos | `30` |
+| `GOOGLE_CLIENT_ID` | ID del cliente OAuth 2.0 de Google; opcional si no se conecta Gmail | valor de Google Cloud |
+| `GOOGLE_CLIENT_SECRET` | Secreto del cliente OAuth 2.0 de Google | secreto de Google Cloud |
+| `MICROSOFT_CLIENT_ID` | ID de la aplicación de Microsoft Entra para Outlook y Hotmail | valor de Microsoft Entra |
+| `MICROSOFT_CLIENT_SECRET` | Secreto de la aplicación de Microsoft Entra | secreto de Microsoft Entra |
+| `MAIL_TOKEN_KEY_B64` | Clave AES-256 en base64 (exactamente 32 bytes antes de codificar) | generar un valor aleatorio |
+| `EMAIL_CODE_TTL_MINUTES` | Vigencia, en minutos, de un código extraído del correo | `10` |
 | `ADMIN_EMAIL` | Correo del administrador creado/actualizado por el seed | `admin@example.com` |
 | `ADMIN_PASSWORD` | Contraseña del administrador; mínimo 12 caracteres | definir una contraseña propia |
 | `APP_PORT` | Puerto público de la aplicación en Docker | `8080` |
@@ -79,6 +85,29 @@ No confirmes archivos `.env` ni uses los valores de ejemplo en producción. Para
 ```powershell
 [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
 ```
+
+Para `MAIL_TOKEN_KEY_B64` genera exactamente 32 bytes:
+
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+```
+
+## Integración de Gmail, Outlook y Hotmail
+
+La conexión se realiza mediante OAuth: Gmail usa la API oficial de Google y Outlook/Hotmail comparten una sola integración con Microsoft Graph. El correo autorizado debe coincidir exactamente con el correo registrado en la cuenta de SakuraStore. Los secretos y tokens nunca deben confirmarse en Git.
+
+Configura estos URI de redirección en cada consola OAuth:
+
+| Proveedor | Desarrollo local | Producción |
+| --- | --- | --- |
+| Google | `http://localhost:4000/api/admin/mail/oauth/google/callback` | `https://codigos-sakurastore.onrender.com/api/admin/mail/oauth/google/callback` |
+| Microsoft | `http://localhost:4000/api/admin/mail/oauth/microsoft/callback` | `https://codigos-sakurastore.onrender.com/api/admin/mail/oauth/microsoft/callback` |
+
+En Google Cloud habilita Gmail API y solicita `openid`, `email` y `https://www.googleapis.com/auth/gmail.readonly`. `gmail.readonly` es un scope restringido: para uso en producción Google puede exigir verificación de la aplicación y una evaluación de seguridad. Además, si la pantalla de consentimiento permanece en modo **Testing**, los refresh tokens expiran a los 7 días y solo podrán conectar los usuarios de prueba configurados. Consulta la [documentación de scopes de Gmail](https://developers.google.com/workspace/gmail/api/auth/scopes) y la [configuración de la pantalla de consentimiento](https://support.google.com/cloud/answer/15549945).
+
+En Microsoft Entra registra una aplicación compatible con cuentas personales de Microsoft y configura los permisos delegados `openid`, `profile`, `email`, `offline_access` y `Mail.Read`. La misma aplicación cubre buzones Outlook y Hotmail.
+
+Las cinco credenciales (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` y `MAIL_TOKEN_KEY_B64`) son opcionales al arrancar: si faltan, el portal conserva el flujo manual y deshabilita únicamente la conexión del proveedor correspondiente. En Render, introdúcelas como variables secretas desde el panel del servicio.
 
 ## Desarrollo local
 
@@ -219,7 +248,7 @@ El objetivo `backend-runtime` del Dockerfile ejecuta las migraciones pendientes 
 - El portal público siempre exige el correo de la cuenta y el código de venta, responde con mensajes genéricos y limita intentos por IP/código.
 - Los códigos usados, invalidados o expirados dejan de entregarse.
 - La tarea de limpieza corre diariamente a las 03:17 del huso horario del contenedor y elimina códigos cuyo vencimiento supera el período de retención.
-- `EmailCodeProvider` es únicamente una base para una futura integración oficial con OAuth y permisos explícitos. No implementa scraping ni acceso a buzones de terceros.
+- Gmail y Microsoft se conectan únicamente por OAuth y sus API oficiales; no se usa scraping ni se solicitan contraseñas de los buzones.
 
 Para respaldar PostgreSQL en Docker:
 

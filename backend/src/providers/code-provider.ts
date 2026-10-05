@@ -4,12 +4,12 @@ export interface SaveCodeInput {
   accountId: string;
   code: string;
   expiresAt: Date;
-  createdBy: string;
+  createdBy?: string | null;
+  saleId?: string | null;
 }
 
 export interface CodeProvider {
-  getLatestCode(accountId: string): Promise<TemporaryCode | null>;
+  getLatestCode(accountId: string, saleId?: string): Promise<TemporaryCode | null>;
   validateCode(code: string): boolean;
   saveCode(input: SaveCodeInput): Promise<TemporaryCode>;
 }
-

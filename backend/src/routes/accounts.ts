@@ -24,7 +24,20 @@ router.get('/', asyncHandler(async (req, res) => {
   const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 80) : '';
   const accounts = await prisma.account.findMany({
     where: search ? { OR: [{ email: { contains: search, mode: 'insensitive' } }, { service: { contains: search, mode: 'insensitive' } }] } : undefined,
-    include: { _count: { select: { sales: true, temporaryCodes: true } } },
+    include: {
+      _count: { select: { sales: true, temporaryCodes: true } },
+      mailboxConnection: {
+        select: {
+          id: true,
+          provider: true,
+          externalEmail: true,
+          status: true,
+          senderAllowlist: true,
+          lastSyncAt: true,
+          lastErrorCode: true,
+        },
+      },
+    },
     orderBy: { createdAt: 'desc' },
   });
   res.json({ success: true, accounts });
@@ -38,8 +51,11 @@ router.post('/', requireCsrf, validateBody(accountSchema), asyncHandler(async (r
 
 router.patch('/:id', requireCsrf, validateBody(updateSchema), asyncHandler(async (req, res) => {
   const id = String(req.params.id);
-  const existing = await prisma.account.findUnique({ where: { id } });
+  const existing = await prisma.account.findUnique({ where: { id }, include: { mailboxConnection: { select: { id: true } } } });
   if (!existing) throw new AppError(404, 'Cuenta no encontrada.', 'NOT_FOUND');
+  if (req.body.email && req.body.email !== existing.email && existing.mailboxConnection) {
+    throw new AppError(409, 'Desconecta el buzón antes de cambiar el correo de la cuenta.', 'MAILBOX_CONNECTED');
+  }
   const account = await prisma.account.update({ where: { id }, data: req.body });
   await writeAudit({ action: 'ACCOUNT_UPDATED', ip: req.ip ?? 'unknown', accountId: account.id, metadata: { adminId: req.admin!.sub } });
   res.json({ success: true, account });

@@ -30,7 +30,11 @@ router.get('/', asyncHandler(async (req, res) => {
       ...statusWhere,
       ...(search ? { account: { email: { contains: search, mode: 'insensitive' } } } : {}),
     },
-    include: { account: { select: { id: true, email: true, service: true } }, creator: { select: { email: true } } },
+    include: {
+      account: { select: { id: true, email: true, service: true } },
+      creator: { select: { email: true } },
+      sale: { select: { saleCode: true } },
+    },
     orderBy: { createdAt: 'desc' },
     take: 250,
   });

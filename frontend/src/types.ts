@@ -1,4 +1,16 @@
 export type AccountStatus = 'ACTIVE' | 'INACTIVE';
+export type MailProvider = 'GOOGLE' | 'MICROSOFT';
+export type MailConnectionStatus = 'ACTIVE' | 'REAUTH_REQUIRED' | 'REVOKED' | 'ERROR';
+
+export interface MailboxConnection {
+  id: string;
+  provider: MailProvider;
+  externalEmail: string;
+  status: MailConnectionStatus;
+  senderAllowlist: string[];
+  lastSyncAt?: string | null;
+  lastErrorCode?: string | null;
+}
 
 export interface Account {
   id: string;
@@ -7,6 +19,7 @@ export interface Account {
   status: AccountStatus;
   createdAt: string;
   _count?: { sales?: number; temporaryCodes?: number };
+  mailboxConnection?: MailboxConnection | null;
 }
 
 export interface Sale {
@@ -28,7 +41,10 @@ export interface TemporaryCode {
   expiresAt: string;
   used: boolean;
   invalidatedAt?: string | null;
-  createdBy?: string;
+  createdBy?: string | null;
+  source?: 'MANUAL' | 'EMAIL';
+  saleId?: string | null;
+  sale?: { saleCode: string } | null;
   account?: Pick<Account, 'id' | 'email' | 'service'>;
 }
 
