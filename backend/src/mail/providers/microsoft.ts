@@ -17,6 +17,7 @@ const DEFAULT_SCOPES = [
 ] as const;
 const MAX_MESSAGES = 20;
 const MAX_BODY_CHARACTERS = 128 * 1024;
+const REQUEST_TIMEOUT_MILLISECONDS = 8_000;
 
 export interface MicrosoftAuthorizationOptions {
   clientId: string;
@@ -139,7 +140,7 @@ async function requestJson<T>(url: string, init: RequestInit, operation: string)
   let response: Response;
 
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MILLISECONDS) });
   } catch {
     throw new Error(`No se pudo contactar a Microsoft durante: ${operation}.`);
   }

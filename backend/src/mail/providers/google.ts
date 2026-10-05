@@ -12,6 +12,7 @@ const MAX_MESSAGES = 20;
 const MAX_MIME_DEPTH = 12;
 const MAX_MIME_PARTS = 100;
 const MAX_BODY_BYTES = 128 * 1024;
+const REQUEST_TIMEOUT_MILLISECONDS = 8_000;
 
 export interface GoogleAuthorizationOptions {
   clientId: string;
@@ -137,7 +138,7 @@ async function requestJson<T>(url: string, init: RequestInit, operation: string)
   let response: Response;
 
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MILLISECONDS) });
   } catch {
     throw new Error(`No se pudo contactar a Google durante: ${operation}.`);
   }
@@ -545,6 +546,7 @@ export async function revokeGoogleToken(token: string): Promise<void> {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({ token: normalized }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MILLISECONDS),
     });
   } catch {
     // Revocation is intentionally best-effort (for disconnect/cleanup paths).
