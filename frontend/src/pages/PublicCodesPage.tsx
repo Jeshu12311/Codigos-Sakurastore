@@ -122,7 +122,7 @@ export function PublicCodesPage() {
               <span className="size-1.5 rounded-full bg-mint" /> Acceso autorizado
             </div>
             <h1 className="text-4xl font-semibold tracking-[-.04em] text-white sm:text-5xl lg:text-[3.4rem] lg:leading-[1.04]">Tu código, justo cuando lo necesitas.</h1>
-            <p className="mt-5 max-w-md text-base leading-7 text-slate-400">Consulta de forma segura el código temporal enviado por la plataforma al correo de tu cuenta. Necesitarás ese correo y tu código de venta.</p>
+            <p className="mt-5 max-w-md text-base leading-7 text-slate-400">Primero valida aquí el correo y tu código de venta. Después solicita el código en la plataforma para recibirlo de forma segura.</p>
             <div className="mt-8 hidden grid-cols-2 gap-4 sm:grid lg:grid-cols-1 xl:grid-cols-2">
               <div className="rounded-xl border border-line/80 bg-white/[.018] p-4"><LockKeyhole size={18} className="mb-3 text-mint" /><p className="text-sm font-medium text-slate-200">Consulta privada</p><p className="mt-1 text-xs leading-5 text-slate-500">Nunca solicitamos tu contraseña.</p></div>
               <div className="rounded-xl border border-line/80 bg-white/[.018] p-4"><Clock3 size={18} className="mb-3 text-mint" /><p className="text-sm font-medium text-slate-200">Vigencia visible</p><p className="mt-1 text-xs leading-5 text-slate-500">Sabrás cuánto tiempo queda.</p></div>
@@ -146,7 +146,7 @@ export function PublicCodesPage() {
 
               {state === 'waiting' && (
                 <div className="mt-6 animate-fade-up rounded-xl border border-sky-400/15 bg-sky-400/[.06] p-4" role="status">
-                  <div className="flex items-center gap-3"><LoaderCircle size={18} className="animate-spin text-sky-300" /><div><p className="text-sm font-medium text-sky-100">Esperando código…</p><p className="mt-0.5 text-xs text-sky-200/50">Actualizamos automáticamente cada 5 segundos.</p></div></div>
+                  <div className="flex items-center gap-3"><LoaderCircle size={18} className="animate-spin text-sky-300" /><div><p className="text-sm font-medium text-sky-100">Ahora solicita el código en la plataforma</p><p className="mt-0.5 text-xs text-sky-200/50">Déjala enviar el correo; actualizamos automáticamente cada 5 segundos.</p></div></div>
                 </div>
               )}
 

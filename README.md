@@ -23,8 +23,8 @@ Portal web para administrar ventas y entregar códigos temporales de acceso de f
 1. El administrador registra el correo real de la cuenta del servicio, por ejemplo `cuenta.streaming@example.com`.
 2. Crea una venta asociada a ese correo y entrega al comprador el código de venta generado.
 3. Desde el panel, conecta mediante OAuth el buzón Gmail, Outlook o Hotmail que corresponde exactamente a ese correo y define los remitentes permitidos.
-4. Cuando el comprador consulta con el correo y el código de venta, la aplicación busca mensajes recientes mediante la API oficial y asocia el código recibido a esa venta.
-5. Si el buzón no está conectado o no hay un código automático, el administrador puede seguir registrándolo manualmente.
+4. El comprador valida primero aquí su correo y código de venta; después solicita el código en la plataforma. La aplicación acepta únicamente mensajes posteriores a esa validación y los asocia a esa venta.
+5. Si el buzón no está conectado o no hay un código automático, el administrador puede registrarlo manualmente eligiendo también la venta autorizada.
 
 ## Tecnologías y estructura
 

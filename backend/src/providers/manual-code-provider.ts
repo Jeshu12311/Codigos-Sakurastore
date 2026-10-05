@@ -11,7 +11,7 @@ export class ManualCodeProvider implements CodeProvider {
         used: false,
         invalidatedAt: null,
         expiresAt: { gt: new Date() },
-        ...(saleId ? { OR: [{ source: 'MANUAL' }, { saleId }] } : { source: 'MANUAL' }),
+        ...(saleId ? { saleId } : { source: 'MANUAL', saleId: null }),
       },
       orderBy: { createdAt: 'desc' },
     });

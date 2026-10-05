@@ -154,12 +154,13 @@ describe.sequential('API backend', () => {
     const { agent, csrfToken } = await authenticatedAgent();
     const code = validCode();
     prismaMock.account.findUnique.mockResolvedValue(account);
+    prismaMock.sale.findFirst.mockResolvedValue(validSale());
     prismaMock.temporaryCode.create.mockResolvedValue(code);
 
     const response = await agent
       .post('/api/admin/codes')
       .set('x-csrf-token', csrfToken)
-      .send({ accountId: account.id, code: code.code, expiresAt: code.expiresAt.toISOString() });
+      .send({ accountId: account.id, saleId: 'sale-1', code: code.code, expiresAt: code.expiresAt.toISOString() });
 
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ success: true, code: { id: code.id, code: code.code } });
@@ -330,7 +331,7 @@ describe.sequential('API backend', () => {
     expect(response.body).not.toHaveProperty('code');
     expect(prismaMock.temporaryCode.findFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
-        OR: expect.arrayContaining([{ source: 'MANUAL' }, { saleId: sale.id }]),
+        saleId: sale.id,
       }),
     }));
   });

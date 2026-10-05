@@ -148,10 +148,10 @@ export async function syncMailboxForAccount(accountId: string, force = false): P
       return { status: 'no_request', codeCreated: false };
     }
 
-    const oldestAccepted = new Date(Math.max(
-      request.createdAt.getTime() - OVERLAP_MILLISECONDS,
-      now.getTime() - env.EMAIL_CODE_TTL_MINUTES * 60_000,
-    ));
+    // The provider query overlaps to avoid missing messages between polls, but
+    // an OTP is eligible only after this sale established its waiting request.
+    // Without that boundary an earlier OTP could be assigned to a later buyer.
+    const oldestAccepted = request.createdAt;
     let created = false;
     const messages = [...fetched.messages].sort((left, right) => right.receivedAt.getTime() - left.receivedAt.getTime());
     for (const message of messages) {

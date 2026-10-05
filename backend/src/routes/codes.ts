@@ -12,6 +12,7 @@ const router = Router();
 const provider = new ManualCodeProvider(prisma);
 const codeSchema = z.object({
   accountId: z.string().trim().min(1),
+  saleId: z.string().trim().min(1),
   code: z.string().trim().min(4).max(32).regex(/^[A-Za-z0-9-]+$/),
   expiresAt: z.coerce.date(),
 }).strict().refine((data) => data.expiresAt.getTime() > Date.now(), { path: ['expiresAt'], message: 'La expiración debe estar en el futuro.' });
@@ -44,9 +45,18 @@ router.get('/', asyncHandler(async (req, res) => {
 router.post('/', requireCsrf, validateBody(codeSchema), asyncHandler(async (req, res) => {
   const account = await prisma.account.findUnique({ where: { id: req.body.accountId } });
   if (!account || account.status !== 'ACTIVE') throw new AppError(400, 'Selecciona una cuenta activa.', 'ACCOUNT_INACTIVE');
+  const sale = await prisma.sale.findFirst({
+    where: {
+      id: req.body.saleId,
+      accountId: account.id,
+      active: true,
+      expiresAt: { gt: new Date() },
+    },
+  });
+  if (!sale) throw new AppError(400, 'Selecciona una venta activa de esta cuenta.', 'SALE_INACTIVE');
   if (!provider.validateCode(req.body.code)) throw new AppError(400, 'El formato del código no es válido.', 'VALIDATION_ERROR');
   const code = await provider.saveCode({ ...req.body, createdBy: req.admin!.sub });
-  await writeAudit({ action: 'CODE_CREATED', ip: req.ip ?? 'unknown', accountId: account.id, metadata: { adminId: req.admin!.sub, codeId: code.id } });
+  await writeAudit({ action: 'CODE_CREATED', ip: req.ip ?? 'unknown', accountId: account.id, saleId: sale.id, metadata: { adminId: req.admin!.sub, codeId: code.id } });
   res.status(201).json({ success: true, code });
 }));
 
