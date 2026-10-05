@@ -4,43 +4,86 @@
 
 :root {
   color-scheme: dark;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #f2f4f7;
-  background: #080b12;
+  font-family: "Segoe UI Variable Text", "Aptos", "Segoe UI", system-ui, sans-serif;
+  color: #eef2f6;
+  background: #070a10;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
 }
 
 * { box-sizing: border-box; }
-html { background: #080b12; }
-body { margin: 0; min-width: 320px; min-height: 100vh; background: #080b12; }
+html { min-width: 320px; background: #070a10; scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; min-height: 100dvh; background: #070a10; }
 button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
-::selection { color: #07130f; background: #64f0c2; }
+button { touch-action: manipulation; }
+input, select, textarea { caret-color: #64f0c2; }
 
-::-webkit-scrollbar { width: 9px; height: 9px; }
-::-webkit-scrollbar-track { background: #0b0e15; }
-::-webkit-scrollbar-thumb { background: #2a3240; border: 2px solid #0b0e15; border-radius: 999px; }
+:focus-visible {
+  outline: 2px solid rgb(100 240 194 / .72);
+  outline-offset: 3px;
+}
+
+::selection { color: #07130f; background: #64f0c2; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #090d13; }
+::-webkit-scrollbar-thumb { background: #303a49; border: 2px solid #090d13; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #465266; }
 
 @layer components {
   .surface {
     @apply rounded-2xl border border-line bg-panel;
   }
+
   .field {
-    @apply w-full rounded-xl border border-line bg-[#0b0f17] px-3.5 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-mint/60 focus:ring-2 focus:ring-mint/10 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply min-h-11 w-full rounded-xl border border-line bg-[#090e16] px-3.5 py-2.5 text-sm text-slate-100 outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-slate-500 focus:border-mint/60 focus:bg-[#0b111a] focus:ring-2 focus:ring-mint/10 disabled:cursor-not-allowed disabled:opacity-60;
   }
+
   .label {
     @apply mb-2 block text-sm font-medium text-slate-300;
   }
-  .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-mint;
+
+  .icon-button {
+    @apply inline-grid size-10 shrink-0 place-items-center rounded-xl text-slate-500 transition-[color,background-color,transform] duration-150 ease-out hover:bg-white/[.055] hover:text-slate-100 active:scale-[.96];
+  }
+
+  .skip-link {
+    @apply fixed left-4 top-4 z-[60] -translate-y-20 rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-[#062019] transition-transform focus:translate-y-0;
   }
 }
 
-.grid-noise {
-  background-image:
-    linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: linear-gradient(to bottom, black, transparent 78%);
+.portal-backdrop {
+  background:
+    radial-gradient(circle at 6% 12%, rgb(26 112 88 / .15), transparent 28rem),
+    linear-gradient(145deg, #080c12 0%, #070a10 58%, #090d13 100%);
+}
+
+.portal-backdrop::before {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(110deg, rgb(255 255 255 / .018), transparent 28%, transparent 72%, rgb(100 240 194 / .018));
+}
+
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+@media (hover: hover) and (pointer: fine) {
+  .liftable {
+    transition: transform 180ms var(--ease-out), border-color 180ms ease, background-color 180ms ease;
+  }
+
+  .liftable:hover { transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
 }

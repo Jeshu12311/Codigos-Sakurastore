@@ -4,17 +4,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: '#080b12',
-        panel: '#0f141d',
-        line: '#252d3b',
+        ink: '#070a10',
+        panel: '#0d121a',
+        line: '#232c39',
         mint: '#64f0c2',
       },
       boxShadow: {
-        glow: '0 0 45px rgba(100, 240, 194, 0.12)',
+        floating: '0 24px 70px rgba(0, 0, 0, 0.28)',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+        sans: ['"Segoe UI Variable Text"', 'Aptos', '"Segoe UI"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['"Cascadia Code"', '"SFMono-Regular"', 'ui-monospace', 'monospace'],
       },
       keyframes: {
         'fade-up': {
@@ -27,7 +27,7 @@ export default {
         },
       },
       animation: {
-        'fade-up': 'fade-up .35s ease-out both',
+        'fade-up': 'fade-up .24s cubic-bezier(.23,1,.32,1) both',
         'pulse-dot': 'pulseDot 1.3s ease-in-out infinite',
       },
     },

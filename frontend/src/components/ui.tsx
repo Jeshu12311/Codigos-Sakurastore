@@ -1,4 +1,5 @@
 import { LoaderCircle, Search, X } from 'lucide-react';
+import { useEffect, useId } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
 import { cn } from '../lib/utils';
 
@@ -7,38 +8,47 @@ export function Button({ className, variant = 'primary', loading, children, disa
   loading?: boolean;
 }) {
   const styles = {
-    primary: 'bg-mint text-[#062019] hover:bg-[#83f5d1] shadow-[0_8px_24px_rgba(100,240,194,.12)]',
-    secondary: 'border border-line bg-[#151b25] text-slate-100 hover:border-slate-600 hover:bg-[#1b2330]',
+    primary: 'bg-mint text-[#062019] hover:bg-[#86f4d1] disabled:bg-mint/45 disabled:text-[#07130f]/70',
+    secondary: 'border border-line bg-[#121923] text-slate-100 hover:border-slate-600 hover:bg-[#18212d]',
     ghost: 'text-slate-400 hover:bg-white/5 hover:text-white',
     danger: 'border border-red-500/25 bg-red-500/10 text-red-300 hover:bg-red-500/20',
   };
   return (
     <button
-      className={cn('inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/50 disabled:cursor-not-allowed disabled:opacity-50', styles[variant], className)}
+      className={cn('inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-[transform,background-color,border-color,color] duration-150 ease-out active:scale-[.98] focus-visible:outline-none disabled:cursor-not-allowed disabled:active:scale-100', styles[variant], className)}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
-      {loading && <LoaderCircle size={16} className="animate-spin" />}
+      {loading && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}
       {children}
     </button>
   );
 }
 
-export function Input({ label, error, className, ...props }: InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }) {
+export function Input({ label, error, className, id, ...props }: InputHTMLAttributes<HTMLInputElement> & { label?: string; error?: string }) {
+  const generatedId = useId();
+  const inputId = id || generatedId;
+  const errorId = error ? `${inputId}-error` : undefined;
+  const describedBy = [props['aria-describedby'], errorId].filter(Boolean).join(' ') || undefined;
+
   return (
-    <label className="block">
+    <label className="block" htmlFor={inputId}>
       {label && <span className="label">{label}</span>}
-      <input className={cn('field', error && 'border-red-400/60', className)} {...props} />
-      {error && <span className="mt-1.5 block text-xs text-red-300">{error}</span>}
+      <input {...props} id={inputId} className={cn('field', error && 'border-red-400/60', className)} aria-invalid={error ? true : props['aria-invalid']} aria-describedby={describedBy} />
+      {error && <span id={errorId} className="mt-1.5 block text-xs text-red-300">{error}</span>}
     </label>
   );
 }
 
-export function Select({ label, children, className, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label?: string }) {
+export function Select({ label, children, className, id, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label?: string }) {
+  const generatedId = useId();
+  const selectId = id || generatedId;
+
   return (
-    <label className="block">
+    <label className="block" htmlFor={selectId}>
       {label && <span className="label">{label}</span>}
-      <select className={cn('field appearance-none', className)} {...props}>{children}</select>
+      <select {...props} id={selectId} className={cn('field appearance-none', className)}>{children}</select>
     </label>
   );
 }
@@ -46,8 +56,8 @@ export function Select({ label, children, className, ...props }: SelectHTMLAttri
 export function SearchInput({ value, onChange, placeholder = 'Buscar…' }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
   return (
     <label className="relative block w-full sm:w-72">
-      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={17} />
-      <input className="field py-2.5 pl-10" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+      <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={17} aria-hidden="true" />
+      <input type="search" aria-label={placeholder} className="field py-2.5 pl-10" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
     </label>
   );
 }
@@ -64,16 +74,33 @@ export function Badge({ tone = 'neutral', children }: { tone?: 'success' | 'warn
 }
 
 export function Modal({ open, title, description, children, onClose }: { open: boolean; title: string; description?: string; children: ReactNode; onClose: () => void }) {
+  const titleId = useId();
+  const descriptionId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, open]);
+
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-5" onMouseDown={(event) => event.currentTarget === event.target && onClose()}>
-      <section role="dialog" aria-modal="true" className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-[#10151e] p-5 shadow-2xl animate-fade-up sm:max-w-lg sm:rounded-2xl sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#020407]/80 p-0 backdrop-blur-[6px] sm:items-center sm:p-5" onMouseDown={(event) => event.currentTarget === event.target && onClose()}>
+      <section role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} className="max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl bg-[#10161f] p-5 shadow-floating animate-fade-up sm:max-w-lg sm:rounded-2xl sm:p-6">
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
-            {description && <p className="mt-1 text-sm leading-6 text-slate-400">{description}</p>}
+            <h2 id={titleId} className="text-lg font-semibold tracking-[-.02em] text-white">{title}</h2>
+            {description && <p id={descriptionId} className="mt-1.5 text-sm leading-6 text-slate-400">{description}</p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-slate-500 transition hover:bg-white/5 hover:text-white"><X size={19} /></button>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="icon-button -mr-2 -mt-2"><X size={19} /></button>
         </header>
         {children}
       </section>
@@ -86,7 +113,7 @@ export function Spinner({ label = 'Cargando' }: { label?: string }) {
 }
 
 export function EmptyState({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
-  return <div className="flex min-h-56 flex-col items-center justify-center px-6 text-center"><div className="mb-4 rounded-2xl border border-line bg-white/[.025] p-3 text-slate-500">{icon}</div><h3 className="font-medium text-slate-200">{title}</h3><p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">{description}</p></div>;
+  return <div className="flex min-h-56 flex-col items-center justify-center px-6 text-center"><div className="mb-4 rounded-xl bg-white/[.035] p-3 text-slate-500">{icon}</div><h3 className="font-medium text-slate-200">{title}</h3><p className="mt-1.5 max-w-sm text-sm leading-6 text-slate-400">{description}</p></div>;
 }
 
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {

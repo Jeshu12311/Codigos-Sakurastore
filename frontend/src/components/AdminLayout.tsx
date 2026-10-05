@@ -1,5 +1,5 @@
 import { Activity, BarChart3, KeyRound, LogOut, Menu, ReceiptText, UsersRound, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { cn, initials } from '../lib/utils';
@@ -23,51 +23,162 @@ const titles: Record<string, { title: string; description: string }> = {
 
 export function AdminLayout() {
   const [open, setOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const heading = titles[location.pathname] || titles['/admin/dashboard'];
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      menuButtonRef.current?.focus();
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
 
   async function handleLogout() {
     await logout();
     navigate('/admin/login', { replace: true });
   }
 
+  function closeNavigation(restoreFocus = false) {
+    setOpen(false);
+    if (restoreFocus) menuButtonRef.current?.focus();
+  }
+
   const sidebar = (
     <>
-      <div className="flex h-20 items-center justify-between border-b border-line px-5">
+      <div className="flex h-[4.5rem] shrink-0 items-center justify-between border-b border-line/80 px-5">
         <Brand link="/admin/dashboard" />
-        <button className="rounded-lg p-2 text-slate-500 lg:hidden" onClick={() => setOpen(false)} aria-label="Cerrar menú"><X size={19} /></button>
+        <button
+          type="button"
+          className="icon-button min-h-11 min-w-11 lg:hidden"
+          onClick={() => closeNavigation(true)}
+          aria-label="Cerrar menú"
+        >
+          <X size={19} aria-hidden="true" />
+        </button>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
-        <p className="mb-3 px-3 pt-3 text-[10px] font-semibold uppercase tracking-[.18em] text-slate-600">Administración</p>
-        {links.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} onClick={() => setOpen(false)} className={({ isActive }) => cn('flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition', isActive ? 'bg-mint/[.09] text-mint' : 'text-slate-400 hover:bg-white/[.035] hover:text-slate-100')}>
-            <Icon size={18} strokeWidth={1.8} />{label}
-          </NavLink>
-        ))}
+
+      <nav aria-label="Navegación administrativa" className="flex-1 overflow-y-auto px-3 py-5">
+        <p className="mb-2 px-3 text-xs font-medium text-slate-500">Administración</p>
+        <div className="space-y-1">
+          {links.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) => cn(
+                'group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-[color,background-color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mint/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c1017] active:scale-[.985]',
+                isActive
+                  ? 'bg-mint/[.095] text-mint'
+                  : 'text-slate-400 hover:bg-white/[.04] hover:text-slate-100',
+              )}
+            >
+              <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
       </nav>
-      <div className="border-t border-line p-3">
+
+      <div className="border-t border-line/80 p-3">
         <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-white/[.06] text-xs font-semibold text-slate-300">{initials(user?.email || 'AD')}</div>
-          <div className="min-w-0 flex-1"><p className="truncate text-xs font-medium text-slate-200">{user?.email}</p><p className="mt-0.5 text-[10px] text-slate-600">Administrador</p></div>
-          <button onClick={() => void handleLogout()} className="rounded-lg p-2 text-slate-500 transition hover:bg-red-500/10 hover:text-red-300" title="Cerrar sesión"><LogOut size={16} /></button>
+          <div
+            className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-white/[.035] text-xs font-semibold text-slate-300"
+            aria-hidden="true"
+          >
+            {initials(user?.email || 'AD')}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-slate-200" title={user?.email}>{user?.email}</p>
+            <p className="mt-0.5 text-[11px] text-slate-500">Administrador</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="icon-button min-h-11 min-w-11 hover:bg-red-500/10 hover:text-red-300 focus-visible:ring-red-300/60"
+            aria-label="Cerrar sesión"
+            title="Cerrar sesión"
+          >
+            <LogOut size={17} aria-hidden="true" />
+          </button>
         </div>
       </div>
     </>
   );
 
   return (
-    <div className="min-h-screen bg-ink text-slate-100">
-      {open && <button aria-label="Cerrar menú" className="fixed inset-0 z-30 bg-black/70 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)} />}
-      <aside className={cn('fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-line bg-[#0c1017] transition-transform duration-200 lg:translate-x-0', open ? 'translate-x-0' : '-translate-x-full')}>{sidebar}</aside>
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-20 items-center border-b border-line bg-ink/85 px-4 backdrop-blur-xl sm:px-7 lg:px-9">
-          <button className="mr-3 rounded-lg p-2 text-slate-400 hover:bg-white/5 lg:hidden" onClick={() => setOpen(true)} aria-label="Abrir menú"><Menu size={20} /></button>
-          <div><h1 className="text-lg font-semibold tracking-tight text-white sm:text-xl">{heading.title}</h1><p className="mt-0.5 hidden text-xs text-slate-500 sm:block">{heading.description}</p></div>
-          <div className="ml-auto flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-[11px] text-slate-500"><span className="size-1.5 rounded-full bg-mint shadow-[0_0_8px_#64f0c2]" /> Sistema operativo</div>
+    <div className="min-h-[100dvh] bg-ink text-slate-100">
+      <a href="#admin-main" className="skip-link">Saltar al contenido</a>
+
+      {open && (
+        <button
+          type="button"
+          aria-label="Cerrar menú"
+          tabIndex={-1}
+          className="fixed inset-0 z-30 bg-black/75 backdrop-blur-[2px] lg:hidden"
+          onClick={() => closeNavigation(true)}
+        />
+      )}
+
+      <aside
+        id="admin-navigation"
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 flex w-[min(17rem,calc(100vw-2rem))] flex-col border-r border-line/80 bg-[#0c1017] shadow-floating transition-[transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:w-64 lg:visible lg:translate-x-0 lg:shadow-none',
+          open ? 'visible translate-x-0' : 'invisible -translate-x-full',
+        )}
+      >
+        {sidebar}
+      </aside>
+
+      <div className="min-h-[100dvh] lg:pl-64">
+        <header className="sticky top-0 z-20 flex h-[4.5rem] items-center border-b border-line/80 bg-ink/90 px-4 backdrop-blur-xl sm:px-7 lg:px-9">
+          <button
+            ref={menuButtonRef}
+            type="button"
+            className="icon-button mr-2 min-h-11 min-w-11 lg:hidden"
+            onClick={() => setOpen(true)}
+            aria-label="Abrir menú"
+            aria-controls="admin-navigation"
+            aria-expanded={open}
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
+
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold tracking-[-.02em] text-white sm:text-xl">{heading.title}</h1>
+            <p className="mt-0.5 hidden truncate text-xs text-slate-500 sm:block">{heading.description}</p>
+          </div>
+
+          <div
+            className="ml-auto inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-line/80 bg-white/[.018] px-2.5 text-[11px] text-slate-400 sm:px-3"
+            role="status"
+            aria-label="Sistema operativo"
+          >
+            <span className="size-1.5 rounded-full bg-mint" aria-hidden="true" />
+            <span className="hidden sm:inline">Sistema operativo</span>
+          </div>
         </header>
-        <main className="p-4 sm:p-7 lg:p-9"><Outlet /></main>
+
+        <main id="admin-main" tabIndex={-1} className="mx-auto w-full max-w-[1600px] p-4 outline-none sm:p-7 lg:p-9">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
