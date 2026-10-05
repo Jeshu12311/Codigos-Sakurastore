@@ -30,10 +30,10 @@ router.get('/', asyncHandler(async (req, res) => {
       ...(search ? { OR: [
         { saleCode: { contains: search, mode: 'insensitive' } },
         { customerReference: { contains: search, mode: 'insensitive' } },
-        { account: { alias: { contains: search, mode: 'insensitive' } } },
+        { account: { email: { contains: search, mode: 'insensitive' } } },
       ] } : {}),
     },
-    include: { account: { select: { id: true, alias: true, service: true, status: true } } },
+    include: { account: { select: { id: true, email: true, service: true, status: true } } },
     orderBy: { createdAt: 'desc' },
   });
   res.json({ success: true, sales });
@@ -55,7 +55,7 @@ router.post('/', requireCsrf, validateBody(saleSchema), asyncHandler(async (req,
 
   const sale = await prisma.sale.create({
     data: { ...req.body, saleCode, customerReference: req.body.customerReference || null },
-    include: { account: { select: { id: true, alias: true, service: true, status: true } } },
+    include: { account: { select: { id: true, email: true, service: true, status: true } } },
   });
   await writeAudit({ action: 'SALE_CREATED', ip: req.ip ?? 'unknown', accountId: account.id, saleId: sale.id, metadata: { adminId: req.admin!.sub } });
   res.status(201).json({ success: true, sale });
@@ -67,7 +67,7 @@ router.patch('/:id', requireCsrf, validateBody(updateSchema), asyncHandler(async
   if (!existing) throw new AppError(404, 'Venta no encontrada.', 'NOT_FOUND');
   const sale = await prisma.sale.update({
     where: { id }, data: req.body,
-    include: { account: { select: { id: true, alias: true, service: true, status: true } } },
+    include: { account: { select: { id: true, email: true, service: true, status: true } } },
   });
   await writeAudit({ action: 'SALE_UPDATED', ip: req.ip ?? 'unknown', accountId: sale.accountId, saleId: sale.id, metadata: { adminId: req.admin!.sub } });
   res.json({ success: true, sale });

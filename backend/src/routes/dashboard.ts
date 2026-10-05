@@ -16,12 +16,12 @@ router.get('/', asyncHandler(async (_req, res) => {
     prisma.auditLog.count({ where: { action: 'PUBLIC_CODE_DELIVERED', createdAt: { gte: startOfToday } } }),
     prisma.auditLog.count({ where: { action: { startsWith: 'PUBLIC_' }, createdAt: { gte: startOfToday } } }),
     prisma.temporaryCode.findMany({
-      include: { account: { select: { alias: true, service: true } } },
+      include: { account: { select: { email: true, service: true } } },
       orderBy: { createdAt: 'desc' },
       take: 6,
     }),
     prisma.auditLog.findMany({
-      include: { account: { select: { alias: true } }, sale: { select: { saleCode: true } } },
+      include: { account: { select: { email: true } }, sale: { select: { saleCode: true } } },
       orderBy: { createdAt: 'desc' },
       take: 8,
     }),
@@ -36,4 +36,3 @@ router.get('/', asyncHandler(async (_req, res) => {
 }));
 
 export default router;
-

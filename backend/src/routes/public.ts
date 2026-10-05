@@ -4,11 +4,12 @@ import { prisma } from '../lib/prisma.js';
 import { createAttemptGuard } from '../middleware/attempt-guard.js';
 import { validateBody } from '../middleware/validate.js';
 import { ManualCodeProvider } from '../providers/manual-code-provider.js';
+import { normalizedEmailSchema } from '../schemas/email.js';
 import { writeAudit } from '../services/audit.js';
 import { asyncHandler } from '../utils/async-handler.js';
 
 const querySchema = z.object({
-  account: z.string().trim().min(3).max(64).regex(/^[A-Za-z0-9._-]+$/),
+  email: normalizedEmailSchema,
   saleCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{4,8}-[A-Z0-9]{4,8}$/),
 }).strict();
 
@@ -20,7 +21,7 @@ export function createPublicRouter(maxFailures = 8): Router {
   const provider = new ManualCodeProvider(prisma);
 
   router.post('/code', validateBody(querySchema), guard.middleware, asyncHandler(async (req, res) => {
-    const { account, saleCode } = req.body;
+    const { email, saleCode } = req.body;
     const ip = req.ip ?? 'unknown';
     const now = new Date();
     const sale = await prisma.sale.findFirst({
@@ -28,7 +29,7 @@ export function createPublicRouter(maxFailures = 8): Router {
         saleCode,
         active: true,
         expiresAt: { gt: now },
-        account: { alias: account, status: 'ACTIVE' },
+        account: { email, status: 'ACTIVE' },
       },
       include: { account: { select: { id: true } } },
     });
@@ -64,4 +65,3 @@ export function createPublicRouter(maxFailures = 8): Router {
 
   return router;
 }
-

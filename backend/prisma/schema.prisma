@@ -22,7 +22,7 @@ model UserAdmin {
 
 model Account {
   id             String          @id @default(cuid())
-  alias          String          @unique
+  email          String          @unique
   service        String
   status         AccountStatus   @default(ACTIVE)
   createdAt      DateTime        @default(now())
@@ -79,4 +79,3 @@ model AuditLog {
   @@index([accountId, createdAt])
   @@index([saleId, createdAt])
 }
-

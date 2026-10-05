@@ -6,7 +6,7 @@ Portal web para administrar ventas y entregar códigos temporales de acceso de f
 
 ## Funcionalidades
 
-- Consulta pública mediante la combinación exacta `cuenta + código de venta`.
+- Consulta pública mediante la combinación exacta `correo de la cuenta + código de venta`.
 - Espera automática de un código cada 5 segundos, durante un máximo de 2 minutos.
 - Cuenta regresiva y copia del código al portapapeles.
 - Administración de cuentas, ventas y códigos temporales.
@@ -16,6 +16,15 @@ Portal web para administrar ventas y entregar códigos temporales de acceso de f
 - Validación estricta, Helmet, límites de solicitudes y bloqueo temporal de intentos.
 - Limpieza diaria de códigos antiguos según `CODE_RETENTION_DAYS`.
 - Arquitectura de proveedores preparada para integraciones autorizadas; la implementación inicial es manual.
+
+## Flujo operativo
+
+1. El administrador registra el correo real de la cuenta del servicio, por ejemplo `cuenta.streaming@example.com`.
+2. Crea una venta asociada a ese correo y entrega al comprador el código de venta generado.
+3. Cuando el servicio envía un código temporal al buzón autorizado, el administrador lo registra para esa cuenta.
+4. El comprador consulta con el correo de la cuenta y su código de venta; el portal entrega únicamente el código temporal activo más reciente.
+
+La recepción automática desde Gmail, Outlook u otro buzón requiere conectar su API oficial mediante OAuth. Hasta configurar esa integración, los códigos se registran manualmente desde el panel.
 
 ## Tecnologías y estructura
 
@@ -207,7 +216,7 @@ El objetivo `backend-runtime` del Dockerfile ejecuta las migraciones pendientes 
 - Las contraseñas administrativas se almacenan mediante bcrypt; nunca en texto plano.
 - El JWT se guarda en una cookie `HttpOnly`, `SameSite=Strict`; las escrituras administrativas requieren un token CSRF adicional.
 - Prisma parametriza las consultas y reduce el riesgo de inyección SQL.
-- El portal público siempre exige cuenta y código de venta, responde con mensajes genéricos y limita intentos por IP/código.
+- El portal público siempre exige el correo de la cuenta y el código de venta, responde con mensajes genéricos y limita intentos por IP/código.
 - Los códigos usados, invalidados o expirados dejan de entregarse.
 - La tarea de limpieza corre diariamente a las 03:17 del huso horario del contenedor y elimina códigos cuyo vencimiento supera el período de retención.
 - `EmailCodeProvider` es únicamente una base para una futura integración oficial con OAuth y permisos explícitos. No implementa scraping ni acceso a buzones de terceros.

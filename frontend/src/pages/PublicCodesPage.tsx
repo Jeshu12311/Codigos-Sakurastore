@@ -9,7 +9,7 @@ import type { PublicCodeResponse } from '../types';
 type ViewState = 'idle' | 'loading' | 'waiting' | 'success' | 'error' | 'timeout' | 'expired';
 
 export function PublicCodesPage() {
-  const [account, setAccount] = useState('');
+  const [email, setEmail] = useState('');
   const [saleCode, setSaleCode] = useState('');
   const [state, setState] = useState<ViewState>('idle');
   const [result, setResult] = useState<PublicCodeResponse | null>(null);
@@ -38,7 +38,7 @@ export function PublicCodesPage() {
     return () => window.clearInterval(interval);
   }, [state, result?.expiresAt]);
 
-  async function requestCode(values: { account: string; saleCode: string }, isPoll = false) {
+  async function requestCode(values: { email: string; saleCode: string }, isPoll = false) {
     try {
       const response = await api<PublicCodeResponse>('/public/code', {
         method: 'POST',
@@ -87,7 +87,7 @@ export function PublicCodesPage() {
     setResult(null);
     setState('loading');
     deadlineRef.current = Date.now() + 120_000;
-    void requestCode({ account: account.trim(), saleCode: saleCode.trim().toUpperCase() });
+    void requestCode({ email: email.trim().toLowerCase(), saleCode: saleCode.trim().toUpperCase() });
   }
 
   async function copyCode() {
@@ -122,7 +122,7 @@ export function PublicCodesPage() {
               <span className="size-1.5 rounded-full bg-mint" /> Acceso autorizado
             </div>
             <h1 className="text-4xl font-semibold tracking-[-.04em] text-white sm:text-5xl lg:text-[3.4rem] lg:leading-[1.04]">Tu código, justo cuando lo necesitas.</h1>
-            <p className="mt-5 max-w-md text-base leading-7 text-slate-400">Consulta de forma segura el código temporal asociado a tu compra. Necesitarás los dos datos que recibiste.</p>
+            <p className="mt-5 max-w-md text-base leading-7 text-slate-400">Consulta de forma segura el código temporal enviado por la plataforma al correo de tu cuenta. Necesitarás ese correo y tu código de venta.</p>
             <div className="mt-8 hidden grid-cols-2 gap-4 sm:grid lg:grid-cols-1 xl:grid-cols-2">
               <div className="rounded-xl border border-line/80 bg-white/[.018] p-4"><LockKeyhole size={18} className="mb-3 text-mint" /><p className="text-sm font-medium text-slate-200">Consulta privada</p><p className="mt-1 text-xs leading-5 text-slate-500">Nunca solicitamos tu contraseña.</p></div>
               <div className="rounded-xl border border-line/80 bg-white/[.018] p-4"><Clock3 size={18} className="mb-3 text-mint" /><p className="text-sm font-medium text-slate-200">Vigencia visible</p><p className="mt-1 text-xs leading-5 text-slate-500">Sabrás cuánto tiempo queda.</p></div>
@@ -134,12 +134,12 @@ export function PublicCodesPage() {
               <div className="mb-7 flex size-11 items-center justify-center rounded-xl border border-line bg-[#141a24] text-mint"><KeyRound size={20} /></div>
               <p className="eyebrow">Portal de clientes</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">Consultar código</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">Ingresa exactamente los datos indicados en tu comprobante.</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Ingresa el correo real de la cuenta y el código de venta que recibiste.</p>
 
               <form onSubmit={submit} className="mt-7 space-y-5">
-                <Input label="Cuenta asignada" autoComplete="off" required minLength={2} maxLength={120} value={account} onChange={(event) => setAccount(event.target.value)} placeholder="Ej. cliente001" disabled={locked} />
+                <Input label="Correo de la cuenta" type="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="cuenta@correo.com" disabled={locked} />
                 <Input label="Código de venta" autoComplete="off" required minLength={4} maxLength={50} value={saleCode} onChange={(event) => setSaleCode(event.target.value.toUpperCase())} placeholder="Ej. F8K2-XP91" className="font-mono uppercase tracking-wider" disabled={locked} />
-                <Button type="submit" loading={state === 'loading'} disabled={!account.trim() || !saleCode.trim()} className="w-full py-3">
+                <Button type="submit" loading={state === 'loading'} disabled={!email.trim() || !saleCode.trim()} className="w-full py-3">
                   {state === 'loading' ? 'Verificando…' : state === 'waiting' ? 'Esperando código…' : 'Obtener código'}
                 </Button>
               </form>

@@ -16,7 +16,7 @@ const admin = {
 
 const account = {
   id: 'account-1',
-  alias: 'cliente001',
+  email: 'cliente@example.com',
   service: 'Streaming',
   status: 'ACTIVE',
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -117,6 +117,39 @@ describe.sequential('API backend', () => {
     }));
   });
 
+  it('crea una cuenta con el correo normalizado', async () => {
+    const { agent, csrfToken } = await authenticatedAgent();
+    const createdAccount = { ...account, email: 'cliente.nuevo@example.com' };
+    prismaMock.account.create.mockResolvedValue(createdAccount);
+
+    const response = await agent
+      .post('/api/admin/accounts')
+      .set('x-csrf-token', csrfToken)
+      .send({ email: '  Cliente.Nuevo@Example.COM ', service: 'Disney+' });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({ success: true, account: { email: createdAccount.email } });
+    expect(prismaMock.account.create).toHaveBeenCalledWith({
+      data: { email: createdAccount.email, service: 'Disney+' },
+    });
+  });
+
+  it('rechaza un correo inválido al crear una cuenta', async () => {
+    const { agent, csrfToken } = await authenticatedAgent();
+
+    const response = await agent
+      .post('/api/admin/accounts')
+      .set('x-csrf-token', csrfToken)
+      .send({ email: 'correo-invalido', service: 'Disney+' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      success: false,
+      error: { code: 'VALIDATION_ERROR' },
+    });
+    expect(prismaMock.account.create).not.toHaveBeenCalled();
+  });
+
   it('registra un código temporal autenticado', async () => {
     const { agent, csrfToken } = await authenticatedAgent();
     const code = validCode();
@@ -145,7 +178,7 @@ describe.sequential('API backend', () => {
 
     const response = await request(createApp())
       .post('/api/public/code')
-      .send({ account: account.alias, saleCode: 'F8K2-XP91' });
+      .send({ email: account.email, saleCode: 'F8K2-XP91' });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -164,7 +197,7 @@ describe.sequential('API backend', () => {
 
     const response = await request(createApp())
       .post('/api/public/code')
-      .send({ account: account.alias, saleCode: 'ZZZZ-ZZZZ' });
+      .send({ email: account.email, saleCode: 'ZZZZ-ZZZZ' });
 
     expect(response.status).toBe(404);
     expect(response.body).toMatchObject({
@@ -179,7 +212,7 @@ describe.sequential('API backend', () => {
 
     const response = await request(createApp())
       .post('/api/public/code')
-      .send({ account: 'otra-cuenta', saleCode: 'F8K2-XP91' });
+      .send({ email: 'otra-cuenta@example.com', saleCode: 'F8K2-XP91' });
 
     expect(response.status).toBe(404);
     expect(response.body).toMatchObject({
@@ -192,9 +225,9 @@ describe.sequential('API backend', () => {
     const app = createApp({ publicRateLimitMax: 2, attemptMaxFailures: 100 });
     mockPublicSale(null);
 
-    const first = await request(app).post('/api/public/code').send({ account: account.alias, saleCode: 'RATE-LM01' });
-    const second = await request(app).post('/api/public/code').send({ account: account.alias, saleCode: 'RATE-LM02' });
-    const blocked = await request(app).post('/api/public/code').send({ account: account.alias, saleCode: 'RATE-LM03' });
+    const first = await request(app).post('/api/public/code').send({ email: account.email, saleCode: 'RATE-LM01' });
+    const second = await request(app).post('/api/public/code').send({ email: account.email, saleCode: 'RATE-LM02' });
+    const blocked = await request(app).post('/api/public/code').send({ email: account.email, saleCode: 'RATE-LM03' });
 
     expect(first.status).toBe(404);
     expect(second.status).toBe(404);
@@ -209,7 +242,7 @@ describe.sequential('API backend', () => {
 
     const response = await request(createApp())
       .post('/api/public/code')
-      .send({ account: account.alias, saleCode: sale.saleCode.toLowerCase() });
+      .send({ email: `  ${account.email.toUpperCase()}  `, saleCode: sale.saleCode.toLowerCase() });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -219,6 +252,38 @@ describe.sequential('API backend', () => {
     });
     expect(response.body.secondsRemaining).toBeGreaterThanOrEqual(171);
     expect(response.body.secondsRemaining).toBeLessThanOrEqual(173);
+    expect(prismaMock.sale.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        saleCode: sale.saleCode,
+        account: { email: account.email, status: 'ACTIVE' },
+      }),
+    }));
     expect(prismaMock.auditLog.create).toHaveBeenCalled();
+  });
+
+  it('rechaza un correo invalido antes de consultar ventas', async () => {
+    const response = await request(createApp())
+      .post('/api/public/code')
+      .send({ email: 'no-es-un-correo', saleCode: 'F8K2-XP91' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      success: false,
+      error: { code: 'VALIDATION_ERROR' },
+    });
+    expect(prismaMock.sale.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('rechaza el contrato público anterior basado en account', async () => {
+    const response = await request(createApp())
+      .post('/api/public/code')
+      .send({ account: account.email, saleCode: 'F8K2-XP91' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      success: false,
+      error: { code: 'VALIDATION_ERROR' },
+    });
+    expect(prismaMock.sale.findFirst).not.toHaveBeenCalled();
   });
 });

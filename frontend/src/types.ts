@@ -2,7 +2,7 @@ export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface Account {
   id: string;
-  alias: string;
+  email: string;
   service: string;
   status: AccountStatus;
   createdAt: string;
@@ -17,7 +17,7 @@ export interface Sale {
   active: boolean;
   createdAt: string;
   expiresAt: string;
-  account?: Pick<Account, 'id' | 'alias' | 'service'>;
+  account?: Pick<Account, 'id' | 'email' | 'service'>;
 }
 
 export interface TemporaryCode {
@@ -29,7 +29,7 @@ export interface TemporaryCode {
   used: boolean;
   invalidatedAt?: string | null;
   createdBy?: string;
-  account?: Pick<Account, 'id' | 'alias' | 'service'>;
+  account?: Pick<Account, 'id' | 'email' | 'service'>;
 }
 
 export interface AuditLog {
@@ -39,7 +39,7 @@ export interface AuditLog {
   accountId?: string | null;
   saleId?: string | null;
   createdAt: string;
-  account?: Pick<Account, 'alias'> | null;
+  account?: Pick<Account, 'email'> | null;
   sale?: Pick<Sale, 'saleCode'> | null;
 }
 

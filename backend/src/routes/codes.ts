@@ -28,9 +28,9 @@ router.get('/', asyncHandler(async (req, res) => {
   const codes = await prisma.temporaryCode.findMany({
     where: {
       ...statusWhere,
-      ...(search ? { account: { alias: { contains: search, mode: 'insensitive' } } } : {}),
+      ...(search ? { account: { email: { contains: search, mode: 'insensitive' } } } : {}),
     },
-    include: { account: { select: { id: true, alias: true, service: true } }, creator: { select: { email: true } } },
+    include: { account: { select: { id: true, email: true, service: true } }, creator: { select: { email: true } } },
     orderBy: { createdAt: 'desc' },
     take: 250,
   });

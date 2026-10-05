@@ -14,7 +14,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       where,
-      include: { account: { select: { alias: true } }, sale: { select: { saleCode: true } } },
+      include: { account: { select: { email: true } }, sale: { select: { saleCode: true } } },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
@@ -25,4 +25,3 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 export default router;
-
