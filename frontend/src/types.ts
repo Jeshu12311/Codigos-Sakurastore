@@ -2,6 +2,14 @@ export type AccountStatus = 'ACTIVE' | 'INACTIVE';
 export type MailProvider = 'GOOGLE' | 'MICROSOFT';
 export type MailConnectionStatus = 'ACTIVE' | 'REAUTH_REQUIRED' | 'REVOKED' | 'ERROR';
 
+export interface MailIntegrationConfig {
+  encryptionKeyConfigured: boolean;
+  providers: {
+    google: { configured: boolean; redirectUri: string };
+    microsoft: { configured: boolean; redirectUri: string };
+  };
+}
+
 export interface MailboxConnection {
   id: string;
   provider: MailProvider;

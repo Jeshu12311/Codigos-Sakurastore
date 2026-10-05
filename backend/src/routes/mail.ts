@@ -72,6 +72,24 @@ function assertConfigured(provider: MailProvider): void {
 export const mailAdminRouter = Router();
 export const mailCallbackRouter = Router();
 
+mailAdminRouter.get('/config', asyncHandler(async (_req, res) => {
+  const encryptionKeyConfigured = Boolean(env.MAIL_TOKEN_KEY_B64);
+  res.json({
+    success: true,
+    encryptionKeyConfigured,
+    providers: {
+      google: {
+        configured: encryptionKeyConfigured && Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+        redirectUri: callbackUrl(MailProvider.GOOGLE),
+      },
+      microsoft: {
+        configured: encryptionKeyConfigured && Boolean(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET),
+        redirectUri: callbackUrl(MailProvider.MICROSOFT),
+      },
+    },
+  });
+}));
+
 mailAdminRouter.post('/accounts/:id/connect/:provider', requireCsrf, validateBody(connectSchema), asyncHandler(async (req, res) => {
   const accountId = String(req.params.id);
   const provider = providerFromParam(req.params.provider);
